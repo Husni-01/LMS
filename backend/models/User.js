@@ -37,6 +37,13 @@ const userSchema = new mongoose.Schema(
         ref: 'Course',
       },
     ],
+    // Verification fields
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    verificationToken: String,
+    tokenExpires: Date,
   },
   {
     timestamps: true,
