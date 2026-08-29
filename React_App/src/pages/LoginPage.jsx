@@ -125,37 +125,7 @@ export default function LoginPage() {
             />
           </div>
 
-          {!isLogin && (
-            <div>
-              <label className="block text-[14px] font-medium text-[#252525] mb-1.5">
-                I want to:
-              </label>
-              <div className="flex gap-4">
-                <label className="flex items-center gap-2 text-[15px] text-[#4a4a4a] cursor-pointer">
-                  <input
-                    type="radio"
-                    name="role"
-                    value="student"
-                    checked={formData.role === 'student'}
-                    onChange={handleChange}
-                    className="accent-[#0260FF]"
-                  />
-                  Learn (Student)
-                </label>
-                <label className="flex items-center gap-2 text-[15px] text-[#4a4a4a] cursor-pointer">
-                  <input
-                    type="radio"
-                    name="role"
-                    value="admin"
-                    checked={formData.role === 'admin'}
-                    onChange={handleChange}
-                    className="accent-[#0260FF]"
-                  />
-                  Teach (Educator)
-                </label>
-              </div>
-            </div>
-          )}
+          {/* Role selection has been securely moved to the backend and Admin Dashboard */}
 
           <button
             type="submit"

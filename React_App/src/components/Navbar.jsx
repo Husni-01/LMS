@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { isAdmin, getCurrentUser, logout } from '../utils/auth'
+import { authService } from '../services/api'
 
 const defaultProps = {
   brandName: 'Edemy',
@@ -11,6 +12,7 @@ export default function Navbar({ props = defaultProps }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [admin, setAdmin] = useState(isAdmin())
   const [user, setUser] = useState(getCurrentUser())
+  const [profileDropdownOpen, setProfileDropdownOpen] = useState(false)
   const navigate = useNavigate()
   const { brandName, links } = props
 
@@ -52,23 +54,57 @@ export default function Navbar({ props = defaultProps }) {
         <div className="w-px h-5 bg-[rgba(37,37,37,0.3)]" />
         
         {user ? (
-          <>
+          <div className="relative">
             <button
-              onClick={() => navigate('/educator')}
-              className="text-[15px] text-[#252525] hover:text-[#0260FF] transition-colors font-['Outfit',sans-serif]"
+              onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+              className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-50 text-[#0260FF] font-bold shadow-sm hover:bg-blue-100 transition-colors"
             >
-              Dashboard
+              {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
             </button>
-            <button
-              onClick={() => {
-                logout()
-                navigate('/')
-              }}
-              className="bg-gray-100 text-[#252525] text-[15px] font-medium px-5 py-2 rounded-md hover:bg-gray-200 transition-colors font-['Outfit',sans-serif]"
-            >
-              Log out
-            </button>
-          </>
+
+            {profileDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-56 bg-white border border-[rgba(37,37,37,0.15)] rounded-lg shadow-lg py-2 z-50 animate-fade-in">
+                <div className="px-4 py-3 border-b border-[rgba(37,37,37,0.1)]">
+                  <p className="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
+                  <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                </div>
+                
+                <div className="py-1">
+                  <button
+                    onClick={() => {
+                      setProfileDropdownOpen(false)
+                      navigate('/educator')
+                    }}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    Dashboard
+                  </button>
+                  <button
+                    onClick={() => {
+                      setProfileDropdownOpen(false)
+                      navigate('/profile')
+                    }}
+                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    My Profile
+                  </button>
+                </div>
+
+                <div className="py-1 border-t border-[rgba(37,37,37,0.1)]">
+                  <button
+                    onClick={() => {
+                      setProfileDropdownOpen(false)
+                      logout()
+                      navigate('/')
+                    }}
+                    className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                  >
+                    Log out
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         ) : (
           <>
             <Link
@@ -106,8 +142,18 @@ export default function Navbar({ props = defaultProps }) {
           ))}
           {user ? (
             <>
+              <div className="px-1 py-2 mb-2 border-b border-[rgba(37,37,37,0.1)]">
+                <p className="text-sm font-semibold text-gray-900 truncate">{user.name}</p>
+                <p className="text-xs text-gray-500 truncate">{user.email}</p>
+              </div>
               <button onClick={() => { navigate('/educator'); setMenuOpen(false) }} className="text-[15px] text-left text-[#252525] font-['Outfit',sans-serif]">
                 Dashboard
+              </button>
+              <button onClick={() => { 
+                setMenuOpen(false)
+                navigate('/profile')
+              }} className="text-[15px] text-left text-[#252525] font-['Outfit',sans-serif]">
+                My Profile
               </button>
               <button onClick={() => { logout(); navigate('/'); setMenuOpen(false) }} className="text-[15px] text-left text-[#252525] font-['Outfit',sans-serif] text-red-500">
                 Log out

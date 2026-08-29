@@ -34,13 +34,21 @@ export const courseService = {
 export const authService = {
   login: (credentials) => API.post('/auth/login', credentials),
   register: (userData) => API.post('/auth/register', userData),
+  updateProfile: (data) => API.patch('/auth/updateMe', data),
   getMe: () => API.get('/auth/me'),
+  addAdmin: (data) => API.post('/auth/add-admin', data),
 }
 
 // Review API Service
 export const reviewService = {
   getCourseReviews: (courseId) => API.get(`/reviews/course/${courseId}`),
   addReview: (courseId, reviewData) => API.post(`/reviews/course/${courseId}`, reviewData),
+}
+
+// Payment API Service
+export const paymentService = {
+  createCheckoutSession: (data) => API.post('/payment/create-checkout-session', data),
+  enrollAfterPayment: (data) => API.post('/payment/enroll', data),
 }
 
 export default API

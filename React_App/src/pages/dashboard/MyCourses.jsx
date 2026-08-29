@@ -157,7 +157,7 @@ export default function MyCourses() {
       ) : (
         <div className="border border-[rgba(37,37,37,0.2)] rounded-md overflow-hidden bg-white shadow-sm">
           {/* Header */}
-          <div className={`grid ${admin ? 'grid-cols-[2fr_100px_90px_130px_100px]' : 'grid-cols-[2fr_120px_100px_160px]'} items-center bg-[#f8fafc] border-b border-[rgba(37,37,37,0.15)] px-4 py-3`}>
+          <div className={`grid ${admin ? 'grid-cols-[2fr_100px_90px_130px_180px]' : 'grid-cols-[2fr_120px_100px_160px]'} items-center bg-[#f8fafc] border-b border-[rgba(37,37,37,0.15)] px-4 py-3`}>
             <span className="text-[14px] font-semibold text-[#252525]">All Courses</span>
             <span className="text-[14px] font-semibold text-[#252525]">Earnings</span>
             <span className="text-[14px] font-semibold text-[#252525]">Students</span>
@@ -168,7 +168,7 @@ export default function MyCourses() {
           {courses.map((course, i) => (
             <div
               key={course.id}
-              className={`grid ${admin ? 'grid-cols-[2fr_100px_90px_130px_100px]' : 'grid-cols-[2fr_120px_100px_160px]'} items-center px-4 py-3.5 border-b border-[rgba(37,37,37,0.1)] last:border-0 hover:bg-slate-50/50 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#fafafa]'}`}
+              className={`grid ${admin ? 'grid-cols-[2fr_100px_90px_130px_180px]' : 'grid-cols-[2fr_120px_100px_160px]'} items-center px-4 py-3.5 border-b border-[rgba(37,37,37,0.1)] last:border-0 hover:bg-slate-50/50 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-[#fafafa]'}`}
             >
               {/* Course name + thumbnail */}
               <div className="flex items-center gap-3 pr-4">

@@ -1,5 +1,6 @@
 import mongoose from 'mongoose'
 import bcrypt from 'bcryptjs'
+import { pepperPassword } from '../utils/crypto.js'
 
 const userSchema = new mongoose.Schema(
   {
@@ -43,18 +44,26 @@ const userSchema = new mongoose.Schema(
 )
 
 // Hash password prior to saving
+// Security pipeline: plaintext → HMAC-SHA256 pepper (AES secret) → bcrypt hash
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next()
-  this.password = await bcrypt.hash(this.password, 12)
+
+  // Step 1: Apply HMAC-SHA256 pepper using the AES-256 secret key
+  const peppered = pepperPassword(this.password)
+
+  // Step 2: Bcrypt hash the peppered password
+  this.password = await bcrypt.hash(peppered, 12)
   next()
 })
 
 // Method to verify password
+// Applies the same pepper before comparing with the stored bcrypt hash
 userSchema.methods.correctPassword = async function (
   candidatePassword,
   userPassword
 ) {
-  return await bcrypt.compare(candidatePassword, userPassword)
+  const peppered = pepperPassword(candidatePassword)
+  return await bcrypt.compare(peppered, userPassword)
 }
 
 const User = mongoose.model('User', userSchema)

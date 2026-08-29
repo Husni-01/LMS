@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { courseService } from '../services/api'
+import { useParams, Link, useNavigate } from 'react-router-dom'
+import { courseService, paymentService } from '../services/api'
+import { getCurrentUser } from '../utils/auth'
 
 const mockCourse = {
   id: 1,
@@ -50,6 +51,9 @@ export default function CourseDetailPage() {
   const [course, setCourse] = useState(mockCourse)
   const [loading, setLoading] = useState(true)
   const [openSections, setOpenSections] = useState({})
+  const [enrolling, setEnrolling] = useState(false)
+  const navigate = useNavigate()
+  const user = getCurrentUser()
 
   useEffect(() => {
     if (!id) {
@@ -88,6 +92,24 @@ export default function CourseDetailPage() {
   if (loading) return <div className="text-center py-20 text-gray-500 font-['Inter',sans-serif]">Loading course details...</div>
 
   const c = course || mockCourse
+
+  const handleEnroll = async () => {
+    if (!user) {
+      navigate('/login')
+      return
+    }
+    
+    setEnrolling(true)
+    try {
+      const res = await paymentService.createCheckoutSession({ courseId: c.id })
+      if (res.data?.url) {
+        window.location.href = res.data.url
+      }
+    } catch (error) {
+      alert(error.response?.data?.message || 'Payment initiation failed. Please try again.')
+      setEnrolling(false)
+    }
+  }
 
   return (
     <div className="max-w-7xl mx-auto px-6 md:px-12 py-10 font-['Inter',sans-serif]">
@@ -179,8 +201,12 @@ export default function CourseDetailPage() {
                 <span className="text-[14px] text-[#0260FF] font-medium">{c.discount || '50% off'}</span>
               </div>
 
-              <button className="w-full bg-[#0260FF] text-white text-[15px] font-semibold py-3 rounded-lg hover:bg-blue-700 transition-colors mb-4">
-                Enroll Now
+              <button 
+                onClick={handleEnroll}
+                disabled={enrolling}
+                className="w-full bg-[#0260FF] text-white text-[15px] font-semibold py-3 rounded-lg hover:bg-blue-700 transition-colors mb-4 disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {enrolling ? 'Please wait...' : 'Enroll Now'}
               </button>
 
               <div>

@@ -15,7 +15,7 @@ export const register = async (req, res, next) => {
       name,
       email,
       password,
-      role: role || 'student',
+      role: 'student', // Security: strictly hardcode to 'student'
     })
 
     createSendToken(newUser, 201, res)
@@ -50,6 +50,64 @@ export const getMe = async (req, res, next) => {
     res.status(200).json({
       status: 'success',
       data: { user },
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const updateMe = async (req, res, next) => {
+  try {
+    // 1) Filter out unwanted fields that are not allowed to be updated
+    const filteredBody = {}
+    if (req.body.name) filteredBody.name = req.body.name
+    if (req.body.email) filteredBody.email = req.body.email
+
+    // 2) Update user document
+    const updatedUser = await User.findByIdAndUpdate(req.user.id, filteredBody, {
+      new: true,
+      runValidators: true
+    })
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        user: updatedUser
+      }
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+export const addAdmin = async (req, res, next) => {
+  try {
+    const { name, email, password, role } = req.body
+
+    // Must explicitly request educator or admin role
+    if (role !== 'admin' && role !== 'educator') {
+      return next(new AppError('Invalid role specified', 400))
+    }
+
+    const existingUser = await User.findOne({ email })
+    if (existingUser) {
+      return next(new AppError('Email is already registered', 400))
+    }
+
+    const newAdmin = await User.create({
+      name,
+      email,
+      password,
+      role: role
+    })
+
+    // Don't log them in (createSendToken), just return success
+    res.status(201).json({
+      status: 'success',
+      message: `${role} account created successfully!`,
+      data: {
+        user: newAdmin
+      }
     })
   } catch (error) {
     next(error)
