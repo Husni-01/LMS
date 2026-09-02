@@ -59,7 +59,9 @@ export const createCheckoutSession = async (req, res, next) => {
               currency: 'usd',
               product_data: {
                 name: course.title,
-                description: course.subtitle || course.description || 'LMS Course Access',
+                description: course.subtitle || course.description || 'Full lifetime access to this course',
+                // Course thumbnail shown on Stripe checkout page
+                ...(course.thumbnail && { images: [course.thumbnail] }),
               },
               unit_amount: priceAmount,
             },
@@ -103,18 +105,27 @@ export const enrollAfterPayment = async (req, res, next) => {
       return next(new AppError('Course ID is required for enrollment', 400))
     }
 
-    // Here you would ideally verify the sessionId with Stripe to ensure payment succeeded
-    // For this implementation, we trust the success page call
-
-    if (req.user) {
-      const alreadyEnrolled = req.user.enrolledCourses.some(id => String(id) === String(courseId))
-      
-      if (!alreadyEnrolled) {
-        await User.findByIdAndUpdate(req.user.id, {
-          $push: { enrolledCourses: courseId }
-        })
-      }
+    if (!req.user) {
+      return next(new AppError('You must be logged in to enroll', 401))
     }
+
+    // Verify the course actually exists in DB
+    let courseExists = false
+    try {
+      const course = await Course.findById(courseId).select('_id')
+      courseExists = !!course
+    } catch (e) { /* invalid ObjectId format */ }
+
+    if (!courseExists) {
+      return next(new AppError('Course not found', 404))
+    }
+
+    // $addToSet prevents duplicate enrollments automatically
+    await User.findByIdAndUpdate(
+      req.user._id || req.user.id,
+      { $addToSet: { enrolledCourses: courseId } },
+      { new: true }
+    )
 
     res.status(200).json({
       status: 'success',

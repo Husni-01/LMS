@@ -69,7 +69,7 @@ export default function CourseDetailPage() {
             ...mockCourse,
             ...fetched,
             id: fetched._id || fetched.id,
-            price: typeof fetched.price === 'number' ? `$${fetched.price}` : fetched.price,
+            price: typeof fetched.price === 'number' ? `$${fetched.price.toFixed(2)}` : fetched.price,
             sections: fetched.sections || mockCourse.sections,
             includes: fetched.includes || mockCourse.includes,
           })
@@ -197,8 +197,9 @@ export default function CourseDetailPage() {
               <p className="text-[13px] text-[#e94560] font-semibold mb-1">⚡ {c.daysLeft || '5 days left at this price!'}</p>
               <div className="flex items-baseline gap-3 mb-4">
                 <span className="text-2xl font-bold text-[#0e0e0e]">{c.price}</span>
-                <span className="text-[15px] text-[rgba(37,37,37,0.4)] line-through">{c.originalPrice || '$19.09'}</span>
-                <span className="text-[14px] text-[#0260FF] font-medium">{c.discount || '50% off'}</span>
+                {c.originalPrice && (
+                  <span className="text-[15px] text-[rgba(37,37,37,0.4)] line-through">{c.originalPrice}</span>
+                )}
               </div>
 
               <button 

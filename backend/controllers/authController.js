@@ -47,7 +47,10 @@ export const login = async (req, res, next) => {
 
 export const getMe = async (req, res, next) => {
   try {
-    const user = await User.findById(req.user.id).populate('enrolledCourses')
+    const user = await User.findById(req.user.id).populate({
+      path: 'enrolledCourses',
+      select: '_id title thumbnail instructor rating reviewCount price category subtitle',
+    })
     res.status(200).json({
       status: 'success',
       data: { user },

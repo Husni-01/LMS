@@ -3,7 +3,7 @@ import { Outlet, Link, useNavigate } from 'react-router-dom'
 import Navbar from './Navbar'
 import Footer from './Footer'
 import Sidebar from './Sidebar'
-import { getUserRole, setUserRole } from '../utils/auth'
+import { getUserRole, setUserRole, getCurrentUser } from '../utils/auth'
 import { LogoMark, UserIcon, SocialIcon } from './Icons'
 
 export function MainLayout() {
@@ -21,9 +21,13 @@ export function MainLayout() {
 export function EducatorLayout() {
   const navigate = useNavigate()
   const [currentRole, setCurrentRole] = useState(getUserRole())
+  const [user, setUser] = useState(getCurrentUser())
 
   useEffect(() => {
-    const handleRoleChange = () => setCurrentRole(getUserRole())
+    const handleRoleChange = () => {
+      setCurrentRole(getUserRole())
+      setUser(getCurrentUser())
+    }
     window.addEventListener('roleChange', handleRoleChange)
     return () => window.removeEventListener('roleChange', handleRoleChange)
   }, [])
@@ -34,6 +38,10 @@ export function EducatorLayout() {
     setUserRole(newRole)
   }
 
+  // Get real display name from JWT/localStorage
+  const displayName = user?.name || user?.email?.split('@')[0] || 'User'
+  const isPrivileged = currentRole === 'admin' || currentRole === 'educator'
+
   return (
     <div className="min-h-screen bg-white flex flex-col font-['Outfit',sans-serif]">
       {/* Dashboard top bar */}
@@ -43,22 +51,30 @@ export function EducatorLayout() {
           <span className="text-2xl font-semibold text-[#0e0e0e]">Edemy</span>
         </Link>
         <div className="flex items-center gap-4">
-          {/* Interactive Role Switcher for testing */}
-          <div className="flex items-center gap-2 bg-slate-50 border border-gray-200 px-3 py-1.5 rounded-full text-xs">
-            <span className="text-gray-500 font-medium">Role:</span>
-            <select
-              value={currentRole}
-              onChange={handleRoleToggle}
-              className="bg-white border border-gray-300 font-semibold rounded px-2 py-0.5 text-xs text-[#0260FF] outline-none cursor-pointer"
-            >
-              <option value="admin">Admin (Full Access)</option>
-              <option value="user">User / Student (Restricted)</option>
-            </select>
-          </div>
+          {/* Only admins/educators get the role switcher — students get a plain badge */}
+          {isPrivileged ? (
+            <div className="flex items-center gap-2 bg-slate-50 border border-gray-200 px-3 py-1.5 rounded-full text-xs">
+              <span className="text-gray-500 font-medium">Role:</span>
+              <select
+                value={currentRole}
+                onChange={handleRoleToggle}
+                className="bg-white border border-gray-300 font-semibold rounded px-2 py-0.5 text-xs text-[#0260FF] outline-none cursor-pointer"
+              >
+                <option value="admin">Admin (Full Access)</option>
+                <option value="educator">Educator</option>
+              </select>
+            </div>
+          ) : (
+            <span className="text-xs bg-green-50 text-green-700 border border-green-200 px-3 py-1.5 rounded-full font-medium">
+              Student
+            </span>
+          )}
 
-          <span className="text-[15px] text-[#4a4a4a]">Hi! <span className="font-medium">{currentRole === 'admin' ? 'Admin Richard' : 'User Richard'}</span></span>
-          <div className="w-[45px] h-[45px] rounded-full bg-[#EBF7FF] flex items-center justify-center shadow-sm">
-            <UserIcon />
+          <span className="text-[15px] text-[#4a4a4a]">
+            Hi! <span className="font-medium">{displayName}</span>
+          </span>
+          <div className="w-[45px] h-[45px] rounded-full bg-[#EBF7FF] flex items-center justify-center shadow-sm text-[#0260FF] font-bold text-lg">
+            {displayName.charAt(0).toUpperCase()}
           </div>
         </div>
       </header>

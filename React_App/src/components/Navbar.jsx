@@ -42,6 +42,15 @@ export default function Navbar({ props = defaultProps }) {
           All Courses
         </Link>
 
+        {user && (
+          <Link
+            to={admin ? '/educator/my-courses' : '/my-learning'}
+            className="text-[15px] text-[#252525] hover:text-[#0260FF] transition-colors font-['Outfit',sans-serif]"
+          >
+            My Courses
+          </Link>
+        )}
+
         {visibleLinks.map((link) => (
           <Link
             key={link.path}
@@ -73,11 +82,11 @@ export default function Navbar({ props = defaultProps }) {
                   <button
                     onClick={() => {
                       setProfileDropdownOpen(false)
-                      navigate('/educator')
+                      navigate(admin ? '/educator' : '/my-learning')
                     }}
                     className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                   >
-                    Dashboard
+                    {admin ? 'Dashboard' : 'My Learning'}
                   </button>
                   <button
                     onClick={() => {

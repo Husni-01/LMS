@@ -13,8 +13,14 @@ const defaultCourse = {
 
 export default function CourseCard({ course = defaultCourse }) {
   const navigate = useNavigate()
-  const { id, _id, title, instructor, rating, reviewCount, price, image, badge } = course
+  const { id, _id, title, instructor, rating, reviewCount, price, image, thumbnail, badge } = course
   const courseId = _id || id
+  // Use image or thumbnail field (backend stores as 'thumbnail')
+  const imgSrc = image || thumbnail || null
+  // Format price: if it's a plain number, prefix with $
+  const displayPrice = price !== undefined && price !== null
+    ? (typeof price === 'number' ? `$${price}` : String(price).startsWith('$') ? price : `$${price}`)
+    : 'Free'
 
   return (
     <div
@@ -23,8 +29,8 @@ export default function CourseCard({ course = defaultCourse }) {
     >
       {/* Thumbnail */}
       <div className="relative h-[140px] bg-gradient-to-br from-slate-800 to-slate-600 overflow-hidden">
-        {image
-          ? <img src={image} alt={title} className="w-full h-full object-cover" />
+        {imgSrc
+          ? <img src={imgSrc} alt={title} className="w-full h-full object-cover" />
           : <PlaceholderThumb title={title} />
         }
         {badge && (
@@ -45,7 +51,7 @@ export default function CourseCard({ course = defaultCourse }) {
           <StarRating rating={rating} />
           <span className="text-[12px] text-[rgba(37,37,37,0.5)]">({reviewCount})</span>
         </div>
-        <p className="text-[14px] font-semibold text-[#0e0e0e] font-['Outfit',sans-serif]">{price}</p>
+        <p className="text-[14px] font-semibold text-[#0e0e0e] font-['Outfit',sans-serif]">{displayPrice}</p>
       </div>
     </div>
   )

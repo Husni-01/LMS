@@ -11,6 +11,7 @@ import LoginPage from './pages/LoginPage'
 import PaymentSuccess from './pages/PaymentSuccess'
 import PaymentCancel from './pages/PaymentCancel'
 import ProfilePage from './pages/ProfilePage'
+import MyLearningPage from './pages/MyLearningPage'
 import { MainLayout, EducatorLayout } from './components/Layouts'
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
         <Route path="payment-success" element={<PaymentSuccess />} />
         <Route path="payment-cancel" element={<PaymentCancel />} />
         <Route path="profile" element={<ProfilePage />} />
+        <Route path="my-learning" element={<MyLearningPage />} />
       </Route>
 
       {/* Educator Dashboard Layout */}

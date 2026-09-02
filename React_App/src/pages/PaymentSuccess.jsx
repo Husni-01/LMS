@@ -53,13 +53,13 @@ export default function PaymentSuccess() {
             </div>
             <h2 className="text-2xl font-bold text-[#0e0e0e] mb-2">Payment Successful!</h2>
             <p className="text-[#4a4a4a] text-[15px] mb-8">
-              Thank you for your purchase. You now have full access to this course.
+              You are now enrolled. Start learning right away!
             </p>
-            <Link 
-              to="/educator" // or wherever student dashboard is
+            <Link
+              to="/my-learning"
               className="inline-block w-full bg-[#0260FF] text-white font-medium py-3 rounded-md hover:bg-blue-700 transition-colors"
             >
-              Go to Dashboard
+              Go to My Courses
             </Link>
           </div>
         )}

@@ -1,72 +1,87 @@
 import mongoose from 'mongoose'
 
-// Build a direct (non-SRV) connection URI from the SRV URI.
-// This bypasses ISP-level DNS SRV record blocks (common in some regions like Sri Lanka).
-// The Atlas shard hostnames were previously observed in successful connections.
-const buildDirectURI = (srvUri, user, pass) => {
-  // Known Atlas shard nodes from previous successful connections
-  const shards = [
-    'ac-qoe3y97-shard-00-00.dutawxb.mongodb.net:27017',
-    'ac-qoe3y97-shard-00-01.dutawxb.mongodb.net:27017',
-    'ac-qoe3y97-shard-00-02.dutawxb.mongodb.net:27017',
-  ]
-  return `mongodb://${user}:${pass}@${shards.join(',')}/talentraa_lms?authSource=admin&replicaSet=atlas-rjdh4a&tls=true&retryWrites=true&w=majority`
-}
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
-const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+const shards = [
+  'ac-qoe3y97-shard-00-00.dutawxb.mongodb.net',
+  'ac-qoe3y97-shard-00-01.dutawxb.mongodb.net',
+  'ac-qoe3y97-shard-00-02.dutawxb.mongodb.net',
+]
+
+// Connect directly to one shard and check if it is the primary
+const tryDirectShard = async (user, encodedPass, shard, index) => {
+  const uri = `mongodb://${user}:${encodedPass}@${shard}:27017/talentraa_lms?authSource=admin&tls=true&directConnection=true`
+  const conn = await mongoose.connect(uri, {
+    serverSelectionTimeoutMS: 8000,
+    connectTimeoutMS: 10000,
+    directConnection: true,
+  })
+
+  // Check if this node is the primary
+  const hello = await mongoose.connection.db.admin().command({ hello: 1 })
+  if (!hello.isWritablePrimary && !hello.ismaster) {
+    // This is a secondary — disconnect and signal to try next
+    await mongoose.disconnect()
+    return false
+  }
+
+  console.log(`[MongoDB Atlas] ✅ Connected to PRIMARY via shard-0${index}: ${shard}`)
+  return true
+}
 
 const connectDB = async () => {
   const srvURI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/talentraa_lms'
   const isAtlas = srvURI.startsWith('mongodb+srv://')
 
-  // Extract credentials from the SRV URI for the direct fallback
-  let user = '', pass = ''
-  if (isAtlas) {
+  // ── Local MongoDB (development fallback) ──────────────────────────────────
+  if (!isAtlas) {
     try {
-      const match = srvURI.match(/mongodb\+srv:\/\/([^:]+):([^@]+)@/)
-      if (match) { user = match[1]; pass = encodeURIComponent(match[2]) }
-    } catch (_) {}
+      const conn = await mongoose.connect(srvURI)
+      console.log(`[MongoDB] ✅ Connected: ${conn.connection.host}`)
+    } catch (err) {
+      console.error(`[MongoDB] ❌ Connection failed: ${err.message}`)
+    }
+    return
   }
 
-  const urisToTry = isAtlas
-    ? [srvURI, buildDirectURI(srvURI, user, pass)]
-    : [srvURI]
+  // ── Extract credentials ───────────────────────────────────────────────────
+  let user = '', pass = ''
+  try {
+    const match = srvURI.match(/mongodb\+srv:\/\/([^:]+):([^@]+)@/)
+    if (match) { user = match[1]; pass = match[2] }
+  } catch (_) {}
+  const encodedPass = encodeURIComponent(pass)
 
-  const MAX_RETRIES = 3
+  // ── Strategy 1: SRV (best, but ISP may block SRV DNS) ────────────────────
+  console.log('[MongoDB Atlas] 🔄 Trying SRV auto-discovery...')
+  try {
+    const conn = await mongoose.connect(srvURI, { serverSelectionTimeoutMS: 8000 })
+    console.log(`[MongoDB Atlas] ✅ Connected via SRV: ${conn.connection.host}`)
+    return
+  } catch (e) {
+    console.warn(`[MongoDB Atlas] ⚠️  SRV failed: ${e.message.slice(0, 80)}`)
+  }
 
-  for (const uri of urisToTry) {
-    const label = uri.startsWith('mongodb+srv') ? 'SRV (auto-discovery)' : 'Direct (shard nodes)'
-    
-    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-      try {
-        if (mongoose.connection.readyState === 1) return // Already connected
-
-        const conn = await mongoose.connect(uri, {
-          serverSelectionTimeoutMS: 8000,
-          connectTimeoutMS: 10000,
-        })
-
-        console.log(`[MongoDB Atlas] ✅ Connected via ${label}: ${conn.connection.host}`)
-        return // Success — stop trying
-      } catch (error) {
-        const isLastAttempt = attempt === MAX_RETRIES
-        const isLastUri = uri === urisToTry[urisToTry.length - 1]
-
-        console.warn(`[MongoDB Atlas] ⚠️  ${label} attempt ${attempt}/${MAX_RETRIES} failed: ${error.message}`)
-
-        if (!isLastAttempt) {
-          const delay = attempt * 2000 // 2s, 4s, 6s exponential backoff
-          console.log(`[MongoDB Atlas] Retrying in ${delay / 1000}s...`)
-          await sleep(delay)
-        } else if (!isLastUri) {
-          console.log(`[MongoDB Atlas] SRV failed. Switching to Direct Connection fallback...`)
-        } else {
-          console.error(`[MongoDB Atlas] ❌ All connection strategies exhausted.`)
-          console.warn(`[MongoDB Atlas] 💡 Fix: Go to MongoDB Atlas → Network Access → Add IP: 0.0.0.0/0`)
-        }
-      }
+  // ── Strategy 2: Direct connection — probe each shard to find the PRIMARY ──
+  console.log('[MongoDB Atlas] 🔄 Probing shards directly to find PRIMARY...')
+  for (let i = 0; i < shards.length; i++) {
+    const shard = shards[i]
+    try {
+      console.log(`[MongoDB Atlas]    → Testing shard-0${i} (${shard})...`)
+      const isPrimary = await tryDirectShard(user, encodedPass, shard, i)
+      if (isPrimary) return // found and kept the primary connection
+      console.log(`[MongoDB Atlas]    ↩ shard-0${i} is secondary, trying next...`)
+    } catch (err) {
+      console.warn(`[MongoDB Atlas]    ⚠️  shard-0${i} unreachable: ${err.message.slice(0, 70)}`)
+      // Make sure mongoose is disconnected before next attempt
+      try { await mongoose.disconnect() } catch (_) {}
+      await sleep(500)
     }
   }
+
+  // ── All strategies failed ─────────────────────────────────────────────────
+  console.error('[MongoDB Atlas] ❌ Could not connect to any primary shard.')
+  console.warn('[MongoDB Atlas] 💡 Fix: MongoDB Atlas → Network Access → Allow 0.0.0.0/0')
 }
 
 export default connectDB
