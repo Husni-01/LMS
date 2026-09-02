@@ -10,7 +10,7 @@ const shards = [
 
 // Connect directly to one shard and check if it is the primary
 const tryDirectShard = async (user, encodedPass, shard, index) => {
-  const uri = `mongodb://${user}:${encodedPass}@${shard}:27017/talentraa_lms?authSource=admin&tls=true&directConnection=true`
+  const uri = `mongodb://${user}:${encodedPass}@${shard}:27017/test?authSource=admin&tls=true&directConnection=true`
   const conn = await mongoose.connect(uri, {
     serverSelectionTimeoutMS: 8000,
     connectTimeoutMS: 10000,

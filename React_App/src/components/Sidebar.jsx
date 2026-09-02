@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom'
 import { isAdmin, logout } from '../utils/auth'
 
 const allNavItems = [
-  { label: 'Dashboard', path: '/educator', Icon: HomeIcon, adminOnly: false },
+  { label: 'Dashboard', path: '/', Icon: HomeIcon, adminOnly: false },
   { label: 'Add Course', path: '/educator/add-course', Icon: AddIcon, adminOnly: true },
   { label: 'My Courses', path: '/educator/my-courses', Icon: CoursesIcon, adminOnly: false },
   { label: 'Student Enrolled', path: '/educator/students', Icon: StudentsIcon, adminOnly: false },

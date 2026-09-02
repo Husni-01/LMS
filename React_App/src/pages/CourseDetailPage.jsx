@@ -194,12 +194,8 @@ export default function CourseDetailPage() {
             </div>
 
             <div className="p-5">
-              <p className="text-[13px] text-[#e94560] font-semibold mb-1">⚡ {c.daysLeft || '5 days left at this price!'}</p>
               <div className="flex items-baseline gap-3 mb-4">
                 <span className="text-2xl font-bold text-[#0e0e0e]">{c.price}</span>
-                {c.originalPrice && (
-                  <span className="text-[15px] text-[rgba(37,37,37,0.4)] line-through">{c.originalPrice}</span>
-                )}
               </div>
 
               <button 

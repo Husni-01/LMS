@@ -15,6 +15,7 @@ export default function AddCourse({ initialForm = defaultForm }) {
   const [admin, setAdmin] = useState(isAdmin())
   const [form, setForm] = useState(initialForm)
   const [preview, setPreview] = useState(null)
+  const [thumbnailBase64, setThumbnailBase64] = useState(null)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState(null)
   const fileRef = useRef(null)
@@ -56,7 +57,14 @@ export default function AddCourse({ initialForm = defaultForm }) {
   const handleFile = (e) => {
     const file = e.target.files[0]
     if (!file) return
+
+    // Show instant preview
     setPreview(URL.createObjectURL(file))
+
+    // Convert to base64 so we can send it to the backend
+    const reader = new FileReader()
+    reader.onload = (ev) => setThumbnailBase64(ev.target.result)
+    reader.readAsDataURL(file)
   }
 
   const handleSubmit = async (e) => {
@@ -76,12 +84,15 @@ export default function AddCourse({ initialForm = defaultForm }) {
         description: form.description || form.headings,
         price: parseFloat(form.price),
         category: form.category,
+        // Send the actual uploaded image (base64) or omit to use the DB default
+        ...(thumbnailBase64 && { thumbnail: thumbnailBase64 }),
       })
-      setMessage({ type: 'success', text: 'Course added successfully to MongoDB!' })
+      setMessage({ type: 'success', text: 'Course added successfully!' })
       setForm(defaultForm)
       setPreview(null)
+      setThumbnailBase64(null)
     } catch (err) {
-      setMessage({ type: 'error', text: err.response?.data?.message || 'Course added (offline mode saved locally)' })
+      setMessage({ type: 'error', text: err.response?.data?.message || 'Failed to add course. Try again.' })
     } finally {
       setLoading(false)
     }

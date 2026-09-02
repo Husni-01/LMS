@@ -77,7 +77,7 @@ const defaultCourses = [
     totalSections: 15,
     totalLectures: 24,
     totalDuration: '18h 10m',
-    isLive: false,
+    isLive: true,
     earnings: 100,
     sections: [
       {
@@ -143,21 +143,31 @@ export const getAllCourses = async (req, res, next) => {
   try {
     let dbCourses = []
     try {
-      dbCourses = await Course.find()
+      // DB courses first, newest on top, only live ones for public
+      dbCourses = await Course.find({ isLive: true }).sort({ createdAt: -1 })
     } catch (e) {
       dbCourses = []
     }
 
-    // Combine default courses with db courses, avoiding duplicates by id/_id
-    const combined = [...defaultCourses]
+    let combined = []
+
     if (dbCourses && dbCourses.length > 0) {
-      dbCourses.forEach((dbc) => {
-        const idStr = dbc._id ? dbc._id.toString() : String(dbc.id)
-        const exists = combined.some((c) => (c._id && c._id.toString() === idStr) || String(c.id) === idStr)
-        if (!exists) {
-          combined.unshift(dbc)
-        }
-      })
+      // DB courses take priority — put them first
+      combined = [...dbCourses]
+
+      // Then append any hardcoded defaults that are NOT already in DB
+      defaultCourses
+        .filter(c => c.isLive !== false)
+        .forEach((dc) => {
+          const idStr = dc._id ? String(dc._id) : String(dc.id)
+          const alreadyIn = combined.some(
+            (c) => (c._id && c._id.toString() === idStr) || String(c.id) === idStr
+          )
+          if (!alreadyIn) combined.push(dc)
+        })
+    } else {
+      // Fallback: DB unavailable — show hardcoded courses that are live
+      combined = defaultCourses.filter(c => c.isLive !== false)
     }
 
     res.status(200).json({
@@ -168,11 +178,12 @@ export const getAllCourses = async (req, res, next) => {
   } catch (error) {
     res.status(200).json({
       status: 'success',
-      results: defaultCourses.length,
-      data: { courses: defaultCourses },
+      results: defaultCourses.filter(c => c.isLive !== false).length,
+      data: { courses: defaultCourses.filter(c => c.isLive !== false) },
     })
   }
 }
+
 
 export const getCourse = async (req, res, next) => {
   try {
@@ -265,6 +276,13 @@ export const updateCourse = async (req, res, next) => {
       defaultCourses[idx] = { ...defaultCourses[idx], ...req.body }
       if (!course) {
         course = defaultCourses[idx]
+        // Upsert to MongoDB so the edit persists across restarts
+        try {
+          const newDbCourse = await Course.create({ ...course, _id: undefined }) // Let Mongo assign a real _id if it's a fake one, or use it if valid
+          course = newDbCourse
+        } catch (upsertErr) {
+          // Fallback to memory if DB is offline
+        }
       }
     }
 

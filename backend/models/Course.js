@@ -30,7 +30,7 @@ const courseSchema = new mongoose.Schema(
     discount: { type: String, default: '50% off' },
     daysLeft: { type: String, default: '5 days left at this price!' },
     badge: { type: String, default: 'BEST SELLER' },
-    thumbnail: { type: String, default: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=600&q=80' },
+    thumbnail: { type: String, default: null },
     instructor: { type: String, default: 'Richard James' },
     rating: { type: Number, default: 4.5 },
     reviewCount: { type: Number, default: 122 },

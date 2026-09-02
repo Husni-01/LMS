@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom'
+import { isAdmin } from '../utils/auth'
 
 const defaultCourse = {
   id: 1,
@@ -11,20 +12,30 @@ const defaultCourse = {
   badge: 'BEST SELLER',
 }
 
-export default function CourseCard({ course = defaultCourse }) {
+export default function CourseCard({ course = defaultCourse, onEdit }) {
   const navigate = useNavigate()
+  const admin = isAdmin()
   const { id, _id, title, instructor, rating, reviewCount, price, image, thumbnail, badge } = course
   const courseId = _id || id
-  // Use image or thumbnail field (backend stores as 'thumbnail')
+  // Backend stores as 'thumbnail'; fallback to 'image'
   const imgSrc = image || thumbnail || null
-  // Format price: if it's a plain number, prefix with $
+  // Always prefix $ if price is a raw number
   const displayPrice = price !== undefined && price !== null
     ? (typeof price === 'number' ? `$${price}` : String(price).startsWith('$') ? price : `$${price}`)
     : 'Free'
 
+  const handleEdit = (e) => {
+    e.stopPropagation()   // prevent navigating to course detail
+    if (onEdit) {
+      onEdit(course)      // parent-supplied handler (e.g. open modal)
+    } else {
+      navigate('/educator/my-courses')
+    }
+  }
+
   return (
     <div
-      className="bg-white rounded-lg border border-[rgba(37,37,37,0.12)] overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+      className="bg-white rounded-lg border border-[rgba(37,37,37,0.12)] overflow-hidden cursor-pointer hover:shadow-md transition-shadow relative group"
       onClick={() => navigate(`/course/${courseId}`)}
     >
       {/* Thumbnail */}
@@ -33,10 +44,26 @@ export default function CourseCard({ course = defaultCourse }) {
           ? <img src={imgSrc} alt={title} className="w-full h-full object-cover" />
           : <PlaceholderThumb title={title} />
         }
+
+        {/* Badge — bottom-left when admin pencil is showing, else top-left */}
         {badge && (
-          <span className="absolute top-2 left-2 bg-[#0260FF] text-white text-[10px] font-semibold px-2 py-0.5 rounded">
+          <span className="absolute top-2 left-2 bg-[#0260FF] text-white text-[10px] font-semibold px-2 py-0.5 rounded z-10">
             {badge}
           </span>
+        )}
+
+        {/* ✏️ Admin edit pencil — top-right corner, shown on hover */}
+        {admin && (
+          <button
+            onClick={handleEdit}
+            title="Edit course"
+            className="absolute top-2 right-2 z-20 w-7 h-7 bg-white/90 hover:bg-white rounded-full shadow flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0260FF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+            </svg>
+          </button>
         )}
       </div>
 

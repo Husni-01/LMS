@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import CourseCard from '../components/CourseCard'
 import { courseService } from '../services/api'
+import { isAdmin } from '../utils/auth'
 
 const mockProps = {
   hero: {
@@ -105,7 +106,11 @@ export default function HomePage({ props = mockProps }) {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             {courses.slice(0, 4).map((course) => (
-              <CourseCard key={course._id || course.id} course={course} />
+              <CourseCard
+                key={course._id || course.id}
+                course={course}
+                onEdit={isAdmin() ? () => navigate('/educator/my-courses') : undefined}
+              />
             ))}
           </div>
         )}

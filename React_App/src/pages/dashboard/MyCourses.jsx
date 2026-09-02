@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Toggle from '../../components/Toggle'
 import { courseService } from '../../services/api'
 import { isAdmin } from '../../utils/auth'
@@ -16,9 +16,12 @@ export default function MyCourses() {
   const [loading, setLoading] = useState(true)
   const [admin, setAdmin] = useState(isAdmin())
   const [editingCourse, setEditingCourse] = useState(null)
-  const [editForm, setEditForm] = useState({ title: '', earnings: '', category: '', description: '' })
+  const [editForm, setEditForm] = useState({ title: '', price: '', category: '', headings: '', description: '' })
+  const [editThumbnail, setEditThumbnail] = useState(null)      // base64 of new upload
+  const [editPreview, setEditPreview] = useState(null)          // preview URL
   const [saving, setSaving] = useState(false)
   const [feedback, setFeedback] = useState(null)
+  const editFileRef = useRef(null)
 
   useEffect(() => {
     const handleRoleChange = () => setAdmin(isAdmin())
@@ -35,6 +38,7 @@ export default function MyCourses() {
           setCourses(fetched.map((c) => ({
             id: c._id || c.id,
             title: c.title,
+            thumbnail: c.thumbnail || null,
             earnings: c.earnings || (c.price ? c.price * 10 : 150),
             students: c.studentCount || c.enrolledStudentsCount || c.students || 20,
             isLive: c.isLive !== undefined ? c.isLive : true,
@@ -80,11 +84,23 @@ export default function MyCourses() {
     setEditingCourse(course)
     setEditForm({
       title: course.title,
-      earnings: course.earnings,
+      price: course.price || course.earnings || '',
       category: course.category,
+      headings: course.headings || course.subtitle || '',
       description: course.description,
     })
+    setEditThumbnail(null)
+    setEditPreview(course.thumbnail || null)
     setFeedback(null)
+  }
+
+  const handleEditFile = (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    setEditPreview(URL.createObjectURL(file))
+    const reader = new FileReader()
+    reader.onload = (ev) => setEditThumbnail(ev.target.result)
+    reader.readAsDataURL(file)
   }
 
   const handleSaveEdit = async (e) => {
@@ -93,49 +109,37 @@ export default function MyCourses() {
     setSaving(true)
     setFeedback(null)
 
-    try {
-      await courseService.updateCourse(editingCourse.id, {
-        title: editForm.title,
-        earnings: Number(editForm.earnings),
-        category: editForm.category,
-        description: editForm.description,
-      })
+    const payload = {
+      title: editForm.title,
+      price: parseFloat(editForm.price) || 0,
+      category: editForm.category,
+      subtitle: editForm.headings,
+      description: editForm.description,
+      ...(editThumbnail && { thumbnail: editThumbnail }),
+    }
 
+    try {
+      await courseService.updateCourse(editingCourse.id, payload)
       setCourses((prev) =>
         prev.map((c) =>
           c.id === editingCourse.id
-            ? {
-                ...c,
-                title: editForm.title,
-                earnings: Number(editForm.earnings),
-                category: editForm.category,
-                description: editForm.description,
-              }
+            ? { ...c, ...payload, thumbnail: editThumbnail || c.thumbnail }
             : c
         )
       )
       setFeedback({ type: 'success', text: 'Course updated successfully!' })
-      setTimeout(() => {
-        setEditingCourse(null)
-      }, 1000)
+      setTimeout(() => setEditingCourse(null), 900)
     } catch (err) {
-      setFeedback({ type: 'error', text: err.response?.data?.message || 'Updated locally' })
+      // Apply locally even if API fails
       setCourses((prev) =>
         prev.map((c) =>
           c.id === editingCourse.id
-            ? {
-                ...c,
-                title: editForm.title,
-                earnings: Number(editForm.earnings),
-                category: editForm.category,
-                description: editForm.description,
-              }
+            ? { ...c, ...payload, thumbnail: editThumbnail || c.thumbnail }
             : c
         )
       )
-      setTimeout(() => {
-        setEditingCourse(null)
-      }, 1200)
+      setFeedback({ type: 'error', text: err.response?.data?.message || 'Saved locally (DB unavailable)' })
+      setTimeout(() => setEditingCourse(null), 1200)
     } finally {
       setSaving(false)
     }
@@ -172,7 +176,7 @@ export default function MyCourses() {
             >
               {/* Course name + thumbnail */}
               <div className="flex items-center gap-3 pr-4">
-                <CourseThumbnail title={course.title} />
+                <CourseThumbnail title={course.title} thumbnail={course.thumbnail} />
                 <div>
                   <span className="text-[14px] text-[#1e293b] font-medium line-clamp-1">{course.title}</span>
                   {course.category && (
@@ -247,12 +251,13 @@ export default function MyCourses() {
             </div>
 
             {feedback && (
-              <div className={`p-3 mb-4 rounded text-sm ${feedback.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+              <div className={`p-3 mb-4 rounded text-sm ${feedback.type === 'success' ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}`}>
                 {feedback.text}
               </div>
             )}
 
             <form onSubmit={handleSaveEdit} className="space-y-4">
+              {/* Title */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Course Title</label>
                 <input
@@ -264,14 +269,16 @@ export default function MyCourses() {
                 />
               </div>
 
+              {/* Price + Category */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Earnings ($)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Price ($)</label>
                   <input
                     type="number"
                     min="0"
-                    value={editForm.earnings}
-                    onChange={(e) => setEditForm((f) => ({ ...f, earnings: e.target.value }))}
+                    step="0.01"
+                    value={editForm.price}
+                    onChange={(e) => setEditForm((f) => ({ ...f, price: e.target.value }))}
                     className="w-full border border-gray-300 rounded px-3 py-2 text-sm outline-none focus:border-[#0260FF]"
                     required
                   />
@@ -287,14 +294,53 @@ export default function MyCourses() {
                 </div>
               </div>
 
+              {/* Headings */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description / Subtitle</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Course Headings / Subtitle</label>
+                <input
+                  type="text"
+                  value={editForm.headings}
+                  onChange={(e) => setEditForm((f) => ({ ...f, headings: e.target.value }))}
+                  placeholder="Short subtitle shown on the course card"
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm outline-none focus:border-[#0260FF]"
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                 <textarea
                   value={editForm.description}
                   onChange={(e) => setEditForm((f) => ({ ...f, description: e.target.value }))}
                   rows={3}
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm outline-none focus:border-[#0260FF] resize-none"
                 />
+              </div>
+
+              {/* Thumbnail upload */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Course Thumbnail</label>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => editFileRef.current.click()}
+                    className="flex items-center gap-2 px-3 py-2 text-sm bg-[#0260FF] text-white rounded hover:bg-blue-700 transition-colors"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 16 14" fill="none">
+                      <path d="M8 9V1M8 1L5 4M8 1l3 3" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      <path d="M1 10v1a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-1" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
+                    </svg>
+                    {editThumbnail ? 'Change Image' : 'Upload Image'}
+                  </button>
+                  <input ref={editFileRef} type="file" accept="image/*" onChange={handleEditFile} className="hidden" />
+                  {editPreview
+                    ? <img src={editPreview} alt="preview" className="h-14 w-24 object-cover rounded shadow border border-gray-200" />
+                    : <div className="h-14 w-24 border border-dashed border-gray-300 rounded flex items-center justify-center text-[10px] text-gray-400">No image</div>
+                  }
+                  {editThumbnail && (
+                    <span className="text-xs text-green-600 font-medium">✓ New image ready</span>
+                  )}
+                </div>
               </div>
 
               <div className="flex justify-end gap-3 pt-2">
@@ -321,7 +367,15 @@ export default function MyCourses() {
   )
 }
 
-function CourseThumbnail({ title }) {
+
+function CourseThumbnail({ title, thumbnail }) {
+  if (thumbnail) {
+    return (
+      <div className="w-16 h-9 rounded shrink-0 shadow overflow-hidden">
+        <img src={thumbnail} alt={title} className="w-full h-full object-cover" />
+      </div>
+    )
+  }
   return (
     <div className="w-16 h-9 rounded bg-gradient-to-br from-slate-700 to-purple-600 flex items-end p-1 shrink-0 shadow overflow-hidden">
       <span className="text-white text-[7px] font-bold leading-tight line-clamp-1">{title || 'Course'}</span>
